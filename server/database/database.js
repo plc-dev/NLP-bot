@@ -1,23 +1,15 @@
 module.exports = async () => {
     try {
         const mongoose = require('mongoose');
-        const Schema = mongoose.Schema;
 
         // Setup Connection
-        mongoose.connect(process.env.mongooseConnection);
+        await mongoose.connect(process.env.mongooseConnection, { useNewUrlParser: true, useUnifiedTopology: true });
 
         // Add all models to one object for better accessibility
-        const db = {};
-        db.Expense = require('./model/Expense')(Schema);
-        db.User = require('./model/User')(Schema);
+        const db = mongoose;
+        db.models.User = require('./model/User')(mongoose);
 
-        Object.keys(db).forEach(model => {
-            mongoose.model(model, db[model]);
-        });
-
-        db.mongoose = mongoose;
-
-        console.log(`Tables have been initialized!`);
+        console.log(`Database initialized!`);
 
         return db;
     } catch (err) {

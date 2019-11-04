@@ -12,18 +12,19 @@ module.exports = async credentials => {
             }
         });
     });
+
     const browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
         defaultViewport: null,
         args: [
             '--disable-dev-shm-usage',
             //'--disable-features=site-per-proces'
         ]
-
     });
 
     try {
         const page = await browser.newPage();
+        await page.setViewport({ width: 1920, height: 1920 });
 
         await page.goto('https://colab.research.google.com', {
             waitUntil: 'networkidle2'
@@ -70,25 +71,50 @@ module.exports = async credentials => {
         await page.waitFor(1000);
         await page.click('colab-dialog paper-tab:nth-of-type(3)');
         await page.waitFor(3000);
-        await page.screenshot({ path: 'test.png' });
         await page.click('.iron-selected #items > div:nth-of-type(1) a');
 
         // connect runtime
         await page.waitForNavigation({ waitUntil: 'networkidle2' });
         await page.click('colab-connect-button');
 
+        // get selectors to iterate cells asynchronously 
         const cellListSelector = '.notebook-cell-list > div';
         const cellSelectors = await page.evaluate(cellListSelector => {
             return Array.from(document.querySelectorAll(cellListSelector)).map((cell, index) => `${cellListSelector}:nth-child(${index + 1})`);
         }, cellListSelector);
-        let skip = true;
+        // iterate cells
+        let importDrive = true;
         for (cellSelector of cellSelectors) {
-            console.log('ran');
-            if (!skip) {
+            if (importDrive) {
+                // trigger cell after making sure no cell is running
+                await page.click(`${cellSelector} .cell-execution`);
+                await page.waitFor(() => !document.querySelector('.running, .pending'), { timeout: 0 });
+                await page.click(`${cellSelector} .cell-execution`);
+                // access iframe containing link to allow drive
+                const iframeElement = await page.$('#cell-wmjkFhrcWk99 > div.main-content > div.codecell-input-output > div.output > div.output-content > div.output-iframe-container > div > div > div > iframe');
+                const iframe = await iframeElement.contentFrame();
+                // click link 
+                await iframe.waitForSelector('a', { timeout: 0 });
+                await iframe.click('a');
+                // get new tab
+                await page.waitFor(5000);
+                let pages = await browser.pages();
+                // allow colab to mount drive
+                await pages[2].click('#choose-account-0');
+                await pages[2].waitFor(3000);
+                await pages[2].click('#submit_approve_access');
+                await pages[2].waitFor(3000);
+                // get token
+                const token = await pages[2].evaluate(() => document.querySelector('textarea').textContent);
+                // pass token to iframe 
+                await iframe.type('input', token);
+                await page.keyboard.press('Enter');
+                await page.waitFor(() => !document.querySelector('.running, .pending'), { timeout: 0 });
+                importDrive = false;
+            } else {
                 await page.click(`${cellSelector} .cell-execution`);
                 await page.waitFor(() => !document.querySelector('.running, .pending'), { timeout: 0 });
             }
-            skip = false;
         }
 
     } catch (err) {

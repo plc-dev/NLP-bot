@@ -1,5 +1,5 @@
-module.exports = Schema => {
-    const User = sequelize.define({
+module.exports = mongoose => {
+    const User = mongoose.Schema({
         email: {
             type: String,
             required: true
@@ -8,6 +8,9 @@ module.exports = Schema => {
             type: String,
             required: true
         },
+        subscription: {
+            type: String
+        }
     });
-    return User;
+    return mongoose.model("User", User);
 }; 
