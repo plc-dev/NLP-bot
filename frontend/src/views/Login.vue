@@ -1,17 +1,34 @@
 <template>
   <div class="login">
-    <img alt="Vue logo" src="img/icons/android-chrome-512x512.png" />
+    <div class="error" v-if="error">Login failed!</div>
     <div id="login">
-      <input type="text" />
-      <input type="password" />
-      <button id="submit" class="button">Login</button>
+      <input v-model="username" placeholder="User" type="text" />
+      <input v-model="password" placeholder="Password" type="password" />
+      <button id="submit" @click.prevent="submitForm" class="button">Login</button>
     </div>
   </div>
 </template>
 
 <script>
 export default {
-  name: "login"
+  name: "login",
+  data() {
+    return {
+      username: "",
+      password: "",
+      error: false
+    };
+  },
+  methods: {
+    async submitForm() {
+      if (await this.$store.dispatch("user/signIn", { username: this.username, password: this.password })) {
+        this.error = false;
+        this.$router.push("/");
+      } else {
+        this.error = true;
+      }
+    }
+  }
 };
 </script>
 

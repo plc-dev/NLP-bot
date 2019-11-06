@@ -38,7 +38,9 @@ module.exports = async (credentials, webpush) => {
     try {
       await executeScript(browser, log, screenshot, printToFile, credentials);
     } catch (err) {
-      console.log(err);
+      log(err);
+      if (err === '')
+      webpush.sendNotification(credentials.subscription, payload).catch(err => console.error(err));
       tries--;
       if (!tries) {
         repeat = false;
@@ -195,14 +197,28 @@ async function executeScript(browser, log, screenshot, printToFile, credentials)
     } else if (i == cellSelectors.length - 2) {
       await page.click(`${cellSelector} .cell-execution`);
       // check every 15 minutes if model is either finnished or our runtime has been disconnected
-      // if disconnect throw error to restart bot
       let finnished = false;
       while (!finnished) {
         await page.waitFor(900000);
+        // get Logs from iframe and send push notification
+        iframeElement = await page.$(`${cellSelector} iframe`);
+        iframe = await iframeElement.contentFrame();
+        let payload = { 
+          title: 'Current log',
+          message: log
+        };
+        webpush.sendNotification(credentials.subscription, payload).catch(err => console.error(err));
+        let log = await iframe.evaluate(() => document.querySelector('#output-body').textContent);
         const disconnected = await page.evaluate(() => document.querySelectorAll("yes-no-dialog").length);
         const done = await page.evaluate(() => !document.querySelectorAll(".running, .pending").length);
+        // if disconnect throw error to restart bot, if script is finished, go to next cell
         if (disconnected) {
           await page.click(".yes-no-dialog #cancel");
+          payload = { 
+            title: 'Disconnected, restarting now',
+            message: log
+          };
+          webpush.sendNotification(credentials.subscription, payload).catch(err => console.error(err));
           throw "disconnected";
         }
         if (done) {

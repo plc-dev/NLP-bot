@@ -6,7 +6,7 @@ import store from "./store";
 
 Vue.config.productionTip = false;
 
-store.dispatch("user/validateSession");
+store.dispatch("user/validateSession", { user: "", password: "" });
 
 router.beforeEach((to, from, next) => {
   if (to.meta.loggedIn === true) {

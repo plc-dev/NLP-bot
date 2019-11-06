@@ -19,12 +19,25 @@ module.exports = (router, db, webpush) => {
             res.sendStatus(403);
         }
     };
+
+    // verify Token in frontend
+    router.post("/verify", (req, res) => {
+        const bearerHeader = req.headers['authorization'];
+        if (typeof bearerHeader !== 'undefined') {
+            const bearerToken = bearerHeader.split(' ')[1];
+            req.token = bearerToken;
+            res.send({ verified: true });
+        } else {
+            res.send({ verified: false });
+        }
+    });
+
     // Authenticate with JWT
     router.post("/auth", (req, res) => {
         const parsedAuth = JSON.parse(req.body.body);
         const user = parsedAuth.user;
         const password = parsedAuth.password;
-        if (user === config.user && config.pass === password) {
+        if (user === '' && ''  === password) {
             jwt.sign({ user }, config.privateKey, signOptions, (err, token) => {
                 res.json({
                     token
@@ -39,15 +52,13 @@ module.exports = (router, db, webpush) => {
     router.post('/subscribe', (req, res) => {
         // Get pushSubscription object
         const subscription = req.body;
-
         // Send 201 - resource created
         res.status(201).json({});
-        console.log(subscription);
         // Create payload
-        const payload = JSON.stringify({ title: 'Push Test' });
-
+        const payload = JSON.stringify({ title: 'Subscription', message: 'Subscription successfully setup' });
         // Pass Object into sendNotification
         webpush.sendNotification(subscription, payload).catch(err => console.error(err));
+        // Persists subscription to db
     });
 
     // Get unrated visitors

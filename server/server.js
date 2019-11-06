@@ -3,13 +3,15 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const webpush = require("web-push");
 const path = require("path");
+const cors = require("cors");
 const app = express();
 
 (async function main() {
-  const port = process.env.PORT || 8080;
+  const port = process.env.PORT || 8088;
   try {
     console.log(`Server has started.`);
 
+		app.use(cors());    
     app.use(bodyParser.json({ limit: "50mb" }));
     app.use(bodyParser.urlencoded({ limit: "50mb", extended: true, parameterLimit: 50000 }));
 

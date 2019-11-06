@@ -7,6 +7,12 @@ Vue.use(VueRouter);
 const routes = [
   {
     path: "/",
+    name: "landing",
+    meta: { loggedIn: true },
+    component: () => import(/* webpackChunkName: "about" */ "../views/Landing.vue")
+  },
+  {
+    path: "/login",
     name: "login",
     meta: { loggedIn: false },
     component: Login
