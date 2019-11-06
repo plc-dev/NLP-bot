@@ -10,6 +10,12 @@ module.exports = mongoose => {
         },
         subscription: {
             type: String
+        },
+        logHistory: {
+            type: Array
+        },
+        currentLog: {
+            type: String
         }
     });
     return mongoose.model("User", User);

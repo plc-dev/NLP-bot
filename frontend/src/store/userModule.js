@@ -7,7 +7,8 @@ export default {
   state: {
     token: localStorage.getItem(token) ? localStorage.getItem(token) : '',
     loggedIn: false,
-    publicVapidKey: "BCcYII2g5YLqPpfsTkaGkNO_wBCqLCeKxYFCrhlWu6eA2vZu2m7n9fP1BgesdfWdDVRbj-ueuZSvXQXeloB0sLM"
+    publicVapidKey: "BCcYII2g5YLqPpfsTkaGkNO_wBCqLCeKxYFCrhlWu6eA2vZu2m7n9fP1BgesdfWdDVRbj-ueuZSvXQXeloB0sLM",
+    user: 
   },
   mutations: {
     setLogin(state, login) {
@@ -47,8 +48,10 @@ export default {
           body: JSON.stringify(payload)
         });
         commit("setLogin", result);
+        return result;
       } catch (err) {
         commit("setLogin", false);
+        return false;
       }
     },
     signOut({commit}) {

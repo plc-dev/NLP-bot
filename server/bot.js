@@ -1,4 +1,4 @@
-module.exports = async (credentials, webpush) => {
+module.exports = async (credentials, nodemailer) => {
   const puppeteer = require("puppeteer");
   const fs = require("fs");
   const log = msg => {
@@ -8,17 +8,36 @@ module.exports = async (credentials, webpush) => {
     if (screenshots) screen.screenshot({ path: `./screenshots/${path}.png` });
   };
   const escape = string => string.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
-  const printToFile = (file, data) =>
-    new Promise((resolve, reject) => {
-      fs.writeFile(file, data, "utf8", error => {
-        if (error) {
-          console.error(error);
-          reject(false);
-        } else {
-          resolve(true);
-        }
-      });
+  const printToFile = (file, data) => new Promise((resolve, reject) => {
+    fs.writeFile(file, data, "utf8", error => {
+      if (error) {
+        console.error(error);
+        reject(false);
+      } else {
+        resolve(true);
+      }
     });
+  });
+
+  let transporter = nodemailer.createTransport({
+    host: 'mail.web.de',
+    port: 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+        user: process.env.mockUser, // generated ethereal user
+        pass: process.env.mockPassword // generated ethereal password
+    },
+    tls:{
+      rejectUnauthorized:false
+    }
+  });
+
+  let mailOptions = {
+    from: `"Colab Bot" ${process.env.mockUser}`, // sender address
+    to: credentials.user, // list of receivers
+    subject: 'Update', // Subject line
+    text: '', // plain text body
+  };
 
   let browser = await puppeteer.launch({
     headless: true,
@@ -36,11 +55,19 @@ module.exports = async (credentials, webpush) => {
 
   while (repeat) {
     try {
-      await executeScript(browser, log, screenshot, printToFile, credentials);
+      await executeScript(browser, log, screenshot, printToFile, credentials, transporter, mailOptions);
     } catch (err) {
       log(err);
-      if (err === '')
-      webpush.sendNotification(credentials.subscription, payload).catch(err => console.error(err));
+      if (err === 'Disconnected') {
+        mailOptions.subject = 'Reconnecting';
+        mailOptions.text = 'Disconnected from Colab. Restarting now.';
+        transporter.sendMail(mailOptions);
+      } else {
+        mailOptions.subject = 'Error';
+        mailOptions.text = err;
+        transporter.sendMail(mailOptions);
+      }
+      //webpush.sendNotification(credentials.subscription, payload).catch(err => console.error(err));
       tries--;
       if (!tries) {
         repeat = false;
@@ -50,7 +77,7 @@ module.exports = async (credentials, webpush) => {
   return;
 };
 
-async function executeScript(browser, log, screenshot, printToFile, credentials) {
+async function executeScript(browser, log, screenshot, printToFile, credentials, transporter, mailOptions) {
   log("Starting bot");
   const page = await browser.newPage();
   await page.setViewport({ width: 1920, height: 1080 });
@@ -203,26 +230,21 @@ async function executeScript(browser, log, screenshot, printToFile, credentials)
         // get Logs from iframe and send push notification
         iframeElement = await page.$(`${cellSelector} iframe`);
         iframe = await iframeElement.contentFrame();
-        let payload = { 
-          title: 'Current log',
-          message: log
-        };
-        webpush.sendNotification(credentials.subscription, payload).catch(err => console.error(err));
-        let log = await iframe.evaluate(() => document.querySelector('#output-body').textContent);
+        //webpush.sendNotification(credentials.subscription, payload).catch(err => console.error(err));
+        let logs = await iframe.evaluate(() => document.querySelector('#output-body').textContent);
+        mailOptions.text = logs;
         const disconnected = await page.evaluate(() => document.querySelectorAll("yes-no-dialog").length);
         const done = await page.evaluate(() => !document.querySelectorAll(".running, .pending").length);
         // if disconnect throw error to restart bot, if script is finished, go to next cell
         if (disconnected) {
           await page.click(".yes-no-dialog #cancel");
-          payload = { 
-            title: 'Disconnected, restarting now',
-            message: log
-          };
-          webpush.sendNotification(credentials.subscription, payload).catch(err => console.error(err));
+          //webpush.sendNotification(credentials.subscription, payload).catch(err => console.error(err));
           throw "disconnected";
         }
         if (done) {
           finnished = true;
+          mailOptions.subject = 'Training is finnished';
+          transporter.sendMail(mailOptions);
         }
       }
     } else {

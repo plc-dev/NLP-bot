@@ -1,6 +1,7 @@
 module.exports = (router, db, webpush) => {
     const jwt = require('jsonwebtoken');
     const signOptions = { expiresIn: "24h" };
+    const nodemailer = require('nodemailer');
     const { User } = db.models;
 
     /**
@@ -39,9 +40,7 @@ module.exports = (router, db, webpush) => {
         const password = parsedAuth.password;
         if (user === '' && ''  === password) {
             jwt.sign({ user }, config.privateKey, signOptions, (err, token) => {
-                res.json({
-                    token
-                });
+                res.json({ token });
             });
         } else {
             res.sendStatus(403);
@@ -71,6 +70,13 @@ module.exports = (router, db, webpush) => {
                 res.json(visitors);
             }
         });
+    });
+
+    // trigger bot
+    router.get("/startBot", (req, res) => {
+        const credentials = req.body;
+        res.sendStatus(200);
+        require('./bot')(credentials, nodemailer);
     });
 
     return router;

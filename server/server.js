@@ -26,7 +26,6 @@ const app = express();
     const api = require("./api")(express.Router(), db, webpush);
     app.use("/api", api);
 
-    //await require('./bot')({ user: process.env.mockUser, password: process.env.mockPassword, subscription: '' }, webpush);
   } catch (err) {
     console.log(err);
   } finally {
